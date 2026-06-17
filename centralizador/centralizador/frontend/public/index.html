@@ -1,18 +1,56 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Roteiro - Mapa Interativo</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <link rel="stylesheet" href="../public/css/style.css"/>
 </head>
 <body>
-    <div>
-        <div id="localizacao">
-            
-        </div>
-        <div>
+    <div class="container">
+        <h1>Centralizador</h1>
+        
+        <form id="formRoteiro">
+            <div class="campo">
+                <label for="origem"> Origem</label>
+                <input
+                    type="text"
+                    id="origem"
+                    placeholder="Digite sua origem"
+                    autocomplete="off">
+                <div id="sugestoesOrigem" class="sugestoes"></div>
+            </div>
 
-        </div>
+            <div class="campo">
+                <label for="destino"> Destino</label>
+                <input
+                    type="text"
+                    id="destino"
+                    placeholder="Digite seu destino"
+                    autocomplete="off">
+                <div id="sugestoesDestino" class="sugestoes"></div>
+            </div>
+
+            <button type="button" id="btnBuscar"> Comparar</button>
+        </form>
+
+        <div id="loading" style="display:none;"> Buscando endereços...</div>
+        <div id="erro" style="display:none;"></div>
+
+        <section id="mapa"></section>
+
+        <section id="resultado"></section>
     </div>
+
+    <!-- Leaflet JS (OBRIGATÓRIO) -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- Seus scripts -->
+    <script src="../public/js/nominatim.js"></script>
+    <script src="../public/js/mapa.js"></script>
+    <script src="../public/js/app.js"></script>
 </body>
 </html>
