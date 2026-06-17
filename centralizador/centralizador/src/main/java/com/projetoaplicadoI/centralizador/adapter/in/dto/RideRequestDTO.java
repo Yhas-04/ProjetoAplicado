@@ -1,22 +1,20 @@
 package com.projetoaplicadoI.centralizador.adapter.in.dto;
 
+
 public class RideRequestDTO {
-    private String source;
-    private String destination;
+    private LocationRequestDTO origin;
+    private LocationRequestDTO destination;
 
-    public String getSource() {
-        return source;
-    }
+    public RideRequestDTO() {}
 
-    public void setSource(String source) {
-        this.source = source;
-    }
-
-    public String getDestination() {
-        return destination;
-    }
-
-    public void setDestination(String destination) {
+    public RideRequestDTO(LocationRequestDTO origin, LocationRequestDTO destination) {
+        this.origin = origin;
         this.destination = destination;
     }
+
+    public LocationRequestDTO getOrigin() { return origin; }
+    public void setOrigin(LocationRequestDTO origin) { this.origin = origin; }
+
+    public LocationRequestDTO getDestination() { return destination; }
+    public void setDestination(LocationRequestDTO destination) { this.destination = destination; }
 }
