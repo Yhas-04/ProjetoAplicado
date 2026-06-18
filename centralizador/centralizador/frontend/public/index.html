@@ -8,66 +8,212 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
         crossorigin=""/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Syne:wght@700&display=swap" rel="stylesheet">
 </head>
 <body>
+
+    <!-- HEADER -->
     <header>
-        <h1>Centralizador</h1>
-        <nav>
-            <a href="#">Início</a>
-            <a href="#">Sobre</a>
-        </nav>
+        <div class="header-logo">
+            <svg class="logo-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="8" cy="8" r="4" fill="#3b82f6"/>
+                <circle cx="24" cy="24" r="4" fill="#3b82f6"/>
+                <line x1="8" y1="8" x2="24" y2="24" stroke="#3b82f6" stroke-width="2" stroke-dasharray="4 3"/>
+            </svg>
+            <div>
+                <h1>Centralizador</h1>
+                <span class="header-sub">Compare rotas em tempo real</span>
+            </div>
+        </div>
+        <div class="header-right">
+            <span class="badge-status">
+                <span class="badge-dot"></span>
+                Mapa ativo
+            </span>
+            <nav>
+                <a href="#">Início</a>
+                <a href="#">Sobre</a>
+            </nav>
+        </div>
     </header>
 
-    <div class="container">
+    <!-- CONTEÚDO PRINCIPAL -->
+    <main>
+        <div class="container">
 
-        <div class="coluna-form">
-            <form id="formRoteiro">
+            <!-- Coluna esquerda: formulário -->
+            <div class="coluna-form">
                 <div class="form-container">
-                    <div class="campo">
-                        <label for="origem">Origem</label>
-                        <input
-                            type="text"
-                            id="origem"
-                            placeholder="Digite sua origem"
-                            autocomplete="off">
-                        <div id="sugestoesOrigem" class="sugestoes"></div>
+                    <div class="form-header">
+                        <h2>De onde para onde?</h2>
+                        <p>Insira a origem e o destino para comparar rotas disponíveis.</p>
                     </div>
 
-                    <div class="campo">
-                        <label for="destino">Destino</label>
-                        <input
-                            type="text"
-                            id="destino"
-                            placeholder="Digite seu destino"
-                            autocomplete="off">
-                        <div id="sugestoesDestino" class="sugestoes"></div>
-                    </div>
+                    <form id="formRoteiro">
+                        <div class="campo">
+                            <label for="origem">
+                                <svg viewBox="0 0 16 16" fill="none" class="campo-icon"><circle cx="8" cy="8" r="4" fill="#3b82f6"/><circle cx="8" cy="8" r="7" stroke="#3b82f6" stroke-width="1.5"/></svg>
+                                Origem
+                            </label>
+                            <input type="text" id="origem" placeholder="Digite sua origem" autocomplete="off">
+                            <div id="sugestoesOrigem" class="sugestoes"></div>
+                        </div>
 
-                    <div id="loading" style="display:none;">Buscando endereços...</div>
-                    <div id="erro" style="display:none;"></div>
+                        <div class="campo-divisor">
+                            <span class="divisor-linha"></span>
+                            <svg viewBox="0 0 24 24" fill="none" class="divisor-icon"><path d="M12 5v14M12 19l-4-4M12 19l4-4" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"/></svg>
+                            <span class="divisor-linha"></span>
+                        </div>
 
-                    <button type="button" id="btnBuscar">Comparar</button>
+                        <div class="campo">
+                            <label for="destino">
+                                <svg viewBox="0 0 16 16" fill="none" class="campo-icon"><path d="M8 1C5.24 1 3 3.24 3 6c0 4 5 9 5 9s5-5 5-9c0-2.76-2.24-5-5-5zm0 6.5A1.5 1.5 0 1 1 8 4a1.5 1.5 0 0 1 0 3z" fill="#ef4444"/></svg>
+                                Destino
+                            </label>
+                            <input type="text" id="destino" placeholder="Digite seu destino" autocomplete="off">
+                            <div id="sugestoesDestino" class="sugestoes"></div>
+                        </div>
+
+                        <div class="filtros">
+                            <span class="filtros-titulo">Filtros</span>
+                            <label class="toggle-label">
+                                <input type="checkbox" class="toggle-input" id="evitarPedagios">
+                                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                                Evitar pedágios
+                            </label>
+                            <label class="toggle-label">
+                                <input type="checkbox" class="toggle-input" id="apenasRodovias">
+                                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                                Apenas rodovias
+                            </label>
+                        </div>
+
+                        <div id="loading" style="display:none;">Buscando endereços...</div>
+                        <div id="erro" style="display:none;"></div>
+
+                        <button type="button" id="btnBuscar">Comparar rotas</button>
+
+                        <div class="contador-buscas">
+                            <svg viewBox="0 0 16 16" fill="none"><path d="M8 1v7l4 2" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round"/><circle cx="8" cy="8" r="7" stroke="#94a3b8" stroke-width="1.5"/></svg>
+                            <span id="contadorTexto">0 rotas comparadas</span>
+                        </div>
+                    </form>
                 </div>
-            </form>
+            </div>
+
+            <!-- Coluna direita: mapa -->
+            <div class="coluna-mapa">
+                <section id="mapa">
+                    <div id="map">
+                        <!-- Legenda -->
+                        <div class="mapa-legenda">
+                            <div class="legenda-item">
+                                <span class="legenda-dot" style="background:#3b82f6"></span>
+                                Origem
+                            </div>
+                            <div class="legenda-item">
+                                <span class="legenda-dot" style="background:#ef4444"></span>
+                                Destino
+                            </div>
+                            <div class="legenda-item">
+                                <span class="legenda-dot" style="background:#10b981"></span>
+                                Parada
+                            </div>
+                        </div>
+                        <!-- Botão centralizar -->
+                        <button type="button" class="btn-centralizar" id="btnCentralizar" title="Centralizar mapa">
+                            <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                        </button>
+                    </div>
+                </section>
+            </div>
+
         </div>
 
-        <div class="coluna-mapa">
-            <section id="mapa">
-                <div id="map"></div>
-            </section>
+        <!-- Barra de estatísticas -->
+        <div class="stats-bar" id="statsBar">
+            <div class="stat-card">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M3 12h18M3 12l4-4M3 12l4 4" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/></svg>
+                <div>
+                    <span class="stat-valor" id="statDistancia">--</span>
+                    <span class="stat-label">Distância total</span>
+                </div>
+            </div>
+            <div class="stat-divisor"></div>
+            <div class="stat-card">
+                <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#3b82f6" stroke-width="2"/><path d="M12 7v5l3 3" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/></svg>
+                <div>
+                    <span class="stat-valor" id="statTempo">--</span>
+                    <span class="stat-label">Tempo estimado</span>
+                </div>
+            </div>
+            <div class="stat-divisor"></div>
+            <div class="stat-card">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h16" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/></svg>
+                <div>
+                    <span class="stat-valor" id="statRotas">0</span>
+                    <span class="stat-label">Rotas encontradas</span>
+                </div>
+            </div>
         </div>
 
-    </div>
+        <!-- Resultado -->
+        <section id="resultado">
+            <div class="resultado-abas">
+                <button class="aba aba-ativa" data-aba="resumo">Resumo</button>
+                <button class="aba" data-aba="detalhes">Detalhes</button>
+                <button class="aba" data-aba="comparativo">Comparativo</button>
+            </div>
+            <div id="resultado-conteudo"></div>
+        </section>
 
-      <footer>
-        <p>© 2026 Centralizador</p>
-        <nav>
-            <a href="#">Início</a>
-            <a href="#">Sobre</a>
-        </nav>
+    </main>
+
+    <!-- FOOTER -->
+    <footer>
+        <div class="footer-como-usar">
+            <h3>Como usar</h3>
+            <div class="passos">
+                <div class="passo">
+                    <span class="passo-numero">1</span>
+                    <div>
+                        <strong>Digite a origem</strong>
+                        <p>Informe o endereço ou cidade de partida</p>
+                    </div>
+                </div>
+                <div class="passo-seta">→</div>
+                <div class="passo">
+                    <span class="passo-numero">2</span>
+                    <div>
+                        <strong>Digite o destino</strong>
+                        <p>Informe para onde deseja ir</p>
+                    </div>
+                </div>
+                <div class="passo-seta">→</div>
+                <div class="passo">
+                    <span class="passo-numero">3</span>
+                    <div>
+                        <strong>Compare as rotas</strong>
+                        <p>Veja distância, tempo e detalhes</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            <p>© 2026 Centralizador</p>
+            <div class="footer-creditos">
+                <span>Powered by</span>
+                <a href="https://leafletjs.com" target="_blank">Leaflet</a>
+                <span>&</span>
+                <a href="https://openstreetmap.org" target="_blank">OpenStreetMap</a>
+            </div>
+            <nav>
+                <a href="#">Início</a>
+                <a href="#">Sobre</a>
+            </nav>
+        </div>
     </footer>
-
-    <section id="resultado"></section>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
