@@ -1,3 +1,6 @@
+import { buscarCoordenadas, buscarSugestoes } from './nominatim.js';
+import { calcularRota } from './mapaLeaflet.js';
+
 const inputOrigem = document.getElementById('origem');
 const inputDestino = document.getElementById('destino');
 const btnBuscar = document.getElementById('btnBuscar');
@@ -12,9 +15,6 @@ let timeoutSugestao = null;
 
 
 document.addEventListener('DOMContentLoaded', () => {
-    if (typeof inicializarMapa === 'function') {
-        inicializarMapa('mapa');
-    }
     setupEventListeners();
 });
 
@@ -87,23 +87,12 @@ async function buscarRota() {
     resultadoDiv.innerHTML = '';
 
     try {
-        const [origem, destino] = await Promise.all([
-            buscarCoordenadas(origemText),
-            buscarCoordenadas(destinoText)
-        ]);
+        const { origem, destino } = await calcularRota(origemText, destinoText);
 
         localOrigem = origem;
         localDestino = destino;
 
-        if (typeof atualizarMapa === 'function') {
-            atualizarMapa(origem, destino);
-        }
-
         mostrarResultado(origem, destino);
-
-        if (typeof centralizarMapa === 'function') {
-            centralizarMapa();
-        }
 
     } catch (error) {
         console.error('Erro ao buscar rota:', error);
@@ -187,7 +176,7 @@ async function buscarSugestoesInput(tipo) {
         sugestoesDiv.style.display = 'block';
 
         sugestoesDiv.querySelectorAll('.sugestao-item').forEach(el => {
-            el.addEventListener('click', () => {
+            el.addEventListener('click', async () => {
                 const lat = parseFloat(el.dataset.lat);
                 const lon = parseFloat(el.dataset.lon);
                 const nome = el.dataset.nome;
@@ -202,12 +191,10 @@ async function buscarSugestoesInput(tipo) {
                 }
 
                 if (localOrigem && localDestino) {
-                    if (typeof atualizarMapa === 'function') {
-                        atualizarMapa(localOrigem, localDestino);
-                    }
-                    if (typeof centralizarMapa === 'function') {
-                        centralizarMapa();
-                    }
+                    await calcularRota(
+                        localOrigem.nome,
+                        localDestino.nome
+                    );
                     mostrarResultado(localOrigem, localDestino);
                 }
             });

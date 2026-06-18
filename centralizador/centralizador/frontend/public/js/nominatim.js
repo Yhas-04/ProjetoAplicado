@@ -64,3 +64,4 @@ async function buscarSugestoes(termo) {
         return [];
     }
 }
+export { buscarCoordenadas, buscarSugestoes };

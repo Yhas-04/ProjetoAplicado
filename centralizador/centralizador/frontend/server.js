@@ -7,10 +7,9 @@ const app = express();
 const PORT = 8081;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 app.use(cors())
-app.use(express.static(__dirname));
+app.use(express.static(path.join(__dirname, 'public'))); app.use(express.static(__dirname));
 app.get('/{*path}', (req, res)=>{
-    res.sendFile(path.join(__dirname, 'index.html'))
-})
+   res.sendFile(path.join(__dirname, 'public', 'index.html')); })
 
 app.listen(PORT, ()=>{
     console.log(`Frontend rodando em http://localhost:${PORT}`)
