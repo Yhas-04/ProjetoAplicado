@@ -39,9 +39,7 @@
     word-break: break-word;
 }
 
-/* ============================================
-   SUGESTÕES (AUTOCOMPLETE)
-   ============================================ */
+
 .sugestoes {
     position: absolute;
     top: 100%;
@@ -74,9 +72,7 @@
     border-bottom: none;
 }
 
-/* ============================================
-   LOADING E ERRO
-   ============================================ */
+
 #loading {
     text-align: center;
     padding: 15px;
@@ -108,6 +104,12 @@
     border: 2px solid #e2e8f0;
     margin-top: 20px;
     background: #f1f5f9;
+}
+
+#map { 
+    height: 400px; 
+    width: 100%;
+
 }
 
 /* Responsivo */
