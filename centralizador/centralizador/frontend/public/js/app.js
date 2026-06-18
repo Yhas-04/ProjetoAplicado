@@ -10,12 +10,14 @@ let localOrigem = null;
 let localDestino = null;
 let timeoutSugestao = null;
 
+
 document.addEventListener('DOMContentLoaded', () => {
     if (typeof inicializarMapa === 'function') {
         inicializarMapa('mapa');
     }
     setupEventListeners();
 });
+
 
 function setupEventListeners() {
     btnBuscar.addEventListener('click', buscarRota);

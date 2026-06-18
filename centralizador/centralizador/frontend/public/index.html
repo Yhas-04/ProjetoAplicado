@@ -4,10 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Roteiro - Mapa Interativo</title>
-    
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    
+        
     <link rel="stylesheet" href="../public/css/style.css"/>
+
+     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+     crossorigin=""/>
+     
 </head>
 <body>
     <div class="container">
@@ -40,17 +43,19 @@
         <div id="loading" style="display:none;"> Buscando endereços...</div>
         <div id="erro" style="display:none;"></div>
 
-        <section id="mapa"></section>
+        <section id="mapa">
+             <div id="map"></div>
+        </section>
 
         <section id="resultado"></section>
     </div>
-
-    <!-- Leaflet JS (OBRIGATÓRIO) -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
-    <!-- Seus scripts -->
     <script src="../public/js/nominatim.js"></script>
     <script src="../public/js/mapa.js"></script>
     <script src="../public/js/app.js"></script>
+     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+     crossorigin=""></script>
+     <script src="js/mapaLeaflet.js"></script>
 </body>
 </html>
