@@ -1,12 +1,16 @@
 import { buscarCoordenadas } from './nominatim.js';
 
-const map = L.map('map').setView([-27.1, -51.15], 13);
+const lat = -27.027074;
+const lon = -51.145337;
+const zoom = 20;
+
+const map = L.map('map').setView([lat, lon], zoom);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors'
 }).addTo(map);
 
-const marcador = L.marker([-27.1, -51.15]).addTo(map);
+const marcador = L.marker([lat, lon]).addTo(map);
 marcador.bindPopup('<b>Localização</b><br>Descrição do ponto.').openPopup();
 
 let marcadorOrigem  = null;
