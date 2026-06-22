@@ -6,14 +6,22 @@ import com.projetoaplicadoI.centralizador.domain.model.Ride;
 import com.projetoaplicadoI.centralizador.domain.port.in.CompareRideCommand;
 import com.projetoaplicadoI.centralizador.domain.port.in.CompareRideUseCase;
 import com.projetoaplicadoI.centralizador.domain.port.out.RideProviderPort;
+import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
-@Service  // ← ESSA ANOTAÇÃO É OBRIGATÓRIA!
+@Service
 public class CompareRideService implements CompareRideUseCase {
 
     private final List<RideProviderPort> rideProviders;
+    @PostConstruct
+    public void init() {
+        System.out.println("===== PROVIDERS INJETADOS =====");
+        System.out.println("Total: " + rideProviders.size());
+        rideProviders.forEach(p -> System.out.println(" - " + p.getProviderName()));
+        System.out.println("================================");
+    }
 
     public CompareRideService(List<RideProviderPort> rideProviders) {
         this.rideProviders = rideProviders;
