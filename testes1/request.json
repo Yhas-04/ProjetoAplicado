@@ -1,0 +1,12 @@
+{
+  "origin": {
+    "name": "Paraguaçu Paulista, SP",
+    "latitude": -22.420350,
+    "longitude": -50.579210
+  },
+  "destination": {
+    "name": "Assis, SP",
+    "latitude": -22.662089,
+    "longitude": -50.420623
+  }
+}
