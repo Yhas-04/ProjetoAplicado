@@ -8,6 +8,35 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="css/style.css" />
+    <style>
+        .login-error {
+            background: #FEE2E2;
+            color: #DC2626;
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 16px;
+            display: none;
+        }
+        .login-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+        .loading-spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255,255,255,0.4);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            display: inline-block;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
 </head>
 <body>
 
@@ -23,21 +52,23 @@
             <h2 class="login-title">Bem-vindo ao RideHub</h2>
             <p class="login-subtitle">Faça login para continuar</p>
 
+            <div id="msgErro" class="login-error"></div>
+
             <div class="login-field">
                 <label>E-mail</label>
-                <input type="email" placeholder="seu@email.com" />
+                <input id="email" type="email" placeholder="seu@email.com" autocomplete="email" />
             </div>
 
             <div class="login-field">
                 <label>Senha</label>
-                <input type="password" placeholder="********" />
+                <input id="senha" type="password" placeholder="********" autocomplete="current-password" />
             </div>
 
             <div class="login-forgot">
                 <a href="#">Esqueci minha senha</a>
             </div>
 
-            <button class="login-btn">Entrar</button>
+            <button class="login-btn" id="btnEntrar" onclick="login()">Entrar</button>
 
             <div class="login-divider">
                 <span>OU</span>
@@ -54,7 +85,7 @@
             </button>
 
             <div class="login-register">
-                Não tem conta? <a href="#">Cadastre-se</a>
+                Não tem conta? <a href="register.html">Cadastre-se</a>
             </div>
         </div>
     </div>
@@ -67,17 +98,19 @@
                 <h1>RideHub</h1>
             </div>
 
+            <div id="msgErroMobile" class="login-error"></div>
+
             <div class="login-field">
                 <label>E-mail</label>
-                <input type="email" placeholder="seu@email.com" />
+                <input id="emailMobile" type="email" placeholder="seu@email.com" autocomplete="email" />
             </div>
 
             <div class="login-field">
                 <label>Senha</label>
-                <input type="password" placeholder="********" />
+                <input id="senhaMobile" type="password" placeholder="********" autocomplete="current-password" />
             </div>
 
-            <button class="login-btn">Entrar</button>
+            <button class="login-btn" id="btnEntrarMobile" onclick="loginMobile()">Entrar</button>
 
             <div class="login-divider">
                 <span>OU</span>
@@ -94,10 +127,96 @@
             </button>
 
             <div class="login-register">
-                Não tem conta? <a href="#">Cadastre-se</a>
+                Não tem conta? <a href="register.html">Cadastre-se</a>
             </div>
         </div>
     </div>
 
+    <script>
+        const API_BASE = 'http://localhost:8080';
+
+        function setLoading(btn, loading) {
+            if (loading) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="loading-spinner"></span>Entrando...';
+            } else {
+                btn.disabled = false;
+                btn.innerHTML = 'Entrar';
+            }
+        }
+
+        function mostrarErro(id, msg) {
+            const el = document.getElementById(id);
+            el.textContent = msg;
+            el.style.display = 'block';
+        }
+
+        function esconderErro(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+
+        async function executarLogin(email, senha, btn, idErro) {
+            if (!email || !senha) {
+                mostrarErro(idErro, 'Preencha e-mail e senha.');
+                return;
+            }
+
+            esconderErro(idErro);
+            setLoading(btn, true);
+
+            try {
+                const res = await fetch(`${API_BASE}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password: senha }),
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    localStorage.setItem('auth_token', data.token);
+                    window.location.href = 'index.html';
+                } else if (res.status === 400 || res.status === 401) {
+                    mostrarErro(idErro, 'E-mail ou senha inválidos.');
+                } else {
+                    mostrarErro(idErro, 'Erro ao fazer login. Tente novamente.');
+                }
+            } catch {
+                mostrarErro(idErro, 'Não foi possível conectar ao servidor.');
+            } finally {
+                setLoading(btn, false);
+            }
+        }
+
+        function login() {
+            executarLogin(
+                document.getElementById('email').value.trim(),
+                document.getElementById('senha').value,
+                document.getElementById('btnEntrar'),
+                'msgErro'
+            );
+        }
+
+        function loginMobile() {
+            executarLogin(
+                document.getElementById('emailMobile').value.trim(),
+                document.getElementById('senhaMobile').value,
+                document.getElementById('btnEntrarMobile'),
+                'msgErroMobile'
+            );
+        }
+
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Enter') {
+                const isMobile = window.innerWidth <= 768;
+                if (isMobile) loginMobile();
+                else login();
+            }
+        });
+
+        // Redireciona se já tiver token válido
+        if (localStorage.getItem('auth_token')) {
+            window.location.href = 'index.html';
+        }
+    </script>
 </body>
 </html>

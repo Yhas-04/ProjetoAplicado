@@ -1,6 +1,8 @@
 import { buscarSugestoes } from './nominatim.js';
 import { calcularRota } from './mapaLeaflet.js';
 
+const token = localStorage.getItem('auth_token');
+if (!token) window.location.href = 'login.html';
 const inputOrigem = document.getElementById('origem');
 const inputDestino = document.getElementById('destino');
 const btnBuscar = document.getElementById('btnBuscar');
