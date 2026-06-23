@@ -18,19 +18,48 @@ let localOrigem = null;
 let localDestino = null;
 let timeoutSug = null;
 
-const APPS = [
-  { id: 'uber', nome: 'UberX', barColor: '#000000', iconBg: '#E8E8E8', iconColor: '#000', logo: 'U', etaMin: 3, etaMax: 8, fatorKm: 2.4, fatorBase: 5.5 },
-  { id: '99', nome: '99', barColor: '#F4C430', iconBg: '#FEF3C7', iconColor: '#9A7B00', logo: '99', etaMin: 4, etaMax: 10, fatorKm: 2.1, fatorBase: 4.8 },
-  { id: 'indriver', nome: 'inDriver', barColor: '#22C55E', iconBg: '#D1FAE5', iconColor: '#16A34A', logo: 'I', etaMin: 5, etaMax: 12, fatorKm: 1.9, fatorBase: 4.2 },
-];
+// Mapa de aparência visual por provider (o backend não manda cor/logo, então
+// mantemos só o "estilo" no front e casamos pelo nome).
+const ESTILO_APPS = {
+  Simulator: { barColor: '#000000', iconBg: '#E8E8E8', iconColor: '#000', logo: 'S' },
+  Uber:      { barColor: '#000000', iconBg: '#E8E8E8', iconColor: '#000', logo: 'U' },
+  '99':      { barColor: '#F4C430', iconBg: '#FEF3C7', iconColor: '#9A7B00', logo: '99' },
+  inDriver:  { barColor: '#22C55E', iconBg: '#D1FAE5', iconColor: '#16A34A', logo: 'I' },
+};
+const ESTILO_PADRAO = { barColor: '#6366F1', iconBg: '#E0E7FF', iconColor: '#4338CA', logo: '?' };
 
-function simularPrecos(distanciaKm) {
-  return APPS.map(app => {
-    const variacao = 1 + (Math.random() - 0.5) * 0.15;
-    const preco = (app.fatorBase + distanciaKm * app.fatorKm) * variacao;
-    const eta = app.etaMin + Math.floor(Math.random() * (app.etaMax - app.etaMin));
-    return { ...app, preco, eta };
+function estiloDoProvider(nome) {
+  return ESTILO_APPS[nome] || ESTILO_PADRAO;
+}
+
+// ---------------------------------------------------------------------
+// Chamada real ao backend (Centralizador na porta 8080, via Nginx /api/)
+// ---------------------------------------------------------------------
+async function compararPrecos(origem, destino) {
+  const payload = {
+    origin: {
+      name: origem.nome,
+      latitude: origem.lat,
+      longitude: origem.lon,
+    },
+    destination: {
+      name: destino.nome,
+      latitude: destino.lat,
+      longitude: destino.lon,
+    },
+  };
+
+  const response = await fetch('/api/ride/compare', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
   });
+
+  if (!response.ok) {
+    throw new Error(`Erro ao consultar preços (HTTP ${response.status})`);
+  }
+
+  return response.json(); // formato descrito pelo Centralizador
 }
 
 function switchTab(tab) {
@@ -80,10 +109,15 @@ async function buscarRota() {
     const { origem, destino, distanciaKm } = await calcularRota(origemText, destinoText);
     localOrigem = origem;
     localDestino = destino;
-    const precos = simularPrecos(distanciaKm);
-    renderizarComparacao(precos, distanciaKm);
-    renderizarInfoRota(origem, destino, distanciaKm);
-    salvarHistorico(origem, destino, distanciaKm, precos);
+
+    // Antes: const precos = simularPrecos(distanciaKm)  -> dados fake no front
+    // Agora: pergunta pro Centralizador (8080), que por sua vez consulta
+    // o ride-app-simulator (8084) e qualquer outro provider real.
+    const comparacao = await compararPrecos(origem, destino);
+
+    renderizarComparacao(comparacao.providers, comparacao.distanceKm);
+    renderizarInfoRota(comparacao);
+    salvarHistorico(comparacao);
   } catch (err) {
     mostrarErro(err.message || 'Erro ao calcular rota.');
   } finally {
@@ -91,50 +125,72 @@ async function buscarRota() {
   }
 }
 
-function renderizarComparacao(precos, distanciaKm) {
-  const ordenados = [...precos].sort((a, b) => a.preco - b.preco);
-  const menorPreco = ordenados[0].preco;
-  const maiorPreco = ordenados[ordenados.length - 1].preco;
-  const range = maiorPreco - menorPreco || 1;
+function renderizarComparacao(providers, distanciaKm) {
+  if (!providers || !providers.length) {
+    listaApps.innerHTML = '<div class="historico-item" style="justify-content:center;color:#6A6580;">Nenhum app disponível agora.</div>';
+    comparacaoPanel.style.display = 'flex';
+    return;
+  }
 
-  listaApps.innerHTML = ordenados.map((app, i) => {
-    const isMelhor = app.preco === menorPreco;
-    const isFastest = app.eta === Math.min(...ordenados.map(a => a.eta));
-    const barPct = Math.round(40 + ((app.preco - menorPreco) / range) * 50);
-    const barColor = isMelhor ? '#16A34A' : app.barColor;
+  const ordenados = [...providers].sort((a, b) => a.price - b.price);
+  const menorPreco = ordenados[0].price;
+  const maiorPreco = ordenados[ordenados.length - 1].price;
+  const range = maiorPreco - menorPreco || 1;
+  const menorEta = Math.min(...ordenados.map(p => p.estimatedTimeMinutes));
+
+  listaApps.innerHTML = ordenados.map(provider => {
+    const estilo = estiloDoProvider(provider.providerName);
+    const isMelhor = provider.price === menorPreco;
+    const isFastest = provider.estimatedTimeMinutes === menorEta;
+    const barPct = Math.round(40 + ((provider.price - menorPreco) / range) * 50);
+    const barColor = isMelhor ? '#16A34A' : estilo.barColor;
     const btnClass = isMelhor ? '' : 'ghost';
+
     let badge = '';
     if (isMelhor) badge = `<span class="app-badge">Mais barato</span>`;
     else if (isFastest) badge = `<span class="app-badge" style="background:#FEF3C7;color:#9A7B00;">Mais rápido</span>`;
 
     return `
-      <div class="app-card" onclick="abrirApp('${app.id}')">
-        <div class="app-logo" style="background:${app.iconBg};color:${app.iconColor};">${app.logo}</div>
+      <div class="app-card" onclick="abrirApp('${provider.providerName}')">
+        <div class="app-logo" style="background:${estilo.iconBg};color:${estilo.iconColor};">${estilo.logo}</div>
         <div class="app-info">
-          <div class="app-nome">${app.nome}</div>
-          <div class="app-rating">★ ${(4.5 + Math.random()*0.5).toFixed(1)} · ${app.eta} min</div>
-          <div class="app-preco">R$ ${app.preco.toFixed(2)}</div>
+          <div class="app-nome">${provider.providerName}</div>
+          <div class="app-rating">${provider.estimatedTimeMinutes} min</div>
+          <div class="app-preco">R$ ${provider.price.toFixed(2)}</div>
           <div class="app-bar"><div class="app-bar-fill" style="width:${barPct}%;background:${barColor};"></div></div>
           ${badge}
         </div>
-        <button class="app-btn ${btnClass}" onclick="event.stopPropagation(); abrirApp('${app.id}')">Escolher</button>
+        <button class="app-btn ${btnClass}" onclick="event.stopPropagation(); abrirApp('${provider.providerName}')">Escolher</button>
       </div>`;
   }).join('');
 
   comparacaoPanel.style.display = 'flex';
 }
 
-function renderizarInfoRota(origem, destino, distanciaKm) {
-  document.getElementById('distanciaVal').textContent = `${distanciaKm.toFixed(1)} km`;
-  document.getElementById('tempoVal').textContent = `~${Math.round(distanciaKm * 2.5)} min`;
-  document.getElementById('appsVal').textContent = `4 opções`;
-  document.getElementById('precoVal').textContent = `R$ ${(APPS.reduce((acc,a) => acc + (a.fatorBase + distanciaKm*a.fatorKm), 0)/APPS.length).toFixed(2)}`;
+function renderizarInfoRota(comparacao) {
+  const { distanceKm, providers } = comparacao;
+  const precoMedio = providers.length
+    ? providers.reduce((acc, p) => acc + p.price, 0) / providers.length
+    : 0;
+
+  document.getElementById('distanciaVal').textContent = `${distanceKm.toFixed(1)} km`;
+  document.getElementById('tempoVal').textContent = `~${Math.round(distanceKm * 2.5)} min`;
+  document.getElementById('appsVal').textContent = `${providers.length} opç${providers.length === 1 ? 'ão' : 'ões'}`;
+  document.getElementById('precoVal').textContent = `R$ ${precoMedio.toFixed(2)}`;
   resultadoDiv.style.display = 'flex';
 }
 
-function salvarHistorico(origem, destino, distanciaKm, precos) {
+function salvarHistorico(comparacao) {
+  const { originName, destinationName, distanceKm, providers } = comparacao;
   const hist = JSON.parse(localStorage.getItem('historico_corridas') || '[]');
-  hist.unshift({ id: Date.now(), data: new Date().toLocaleString('pt-BR'), origem: origem.nome.split(',')[0], destino: destino.nome.split(',')[0], distancia: distanciaKm.toFixed(1), precos: precos.map(p => ({ nome: p.nome, preco: p.preco })) });
+  hist.unshift({
+    id: Date.now(),
+    data: new Date().toLocaleString('pt-BR'),
+    origem: (originName || '').split(',')[0],
+    destino: (destinationName || '').split(',')[0],
+    distancia: distanceKm.toFixed(1),
+    precos: providers.map(p => ({ nome: p.providerName, preco: p.price })),
+  });
   localStorage.setItem('historico_corridas', JSON.stringify(hist.slice(0, 30)));
 }
 
@@ -143,7 +199,7 @@ function renderizarHistorico() {
   if (!listaHistorico) return;
   if (!hist.length) { listaHistorico.innerHTML = '<div class="historico-item" style="justify-content:center;color:#6A6580;">Nenhuma corrida ainda.</div>'; return; }
   listaHistorico.innerHTML = hist.map(item => {
-    const melhor = item.precos.reduce((a,b) => a.preco < b.preco ? a : b);
+    const melhor = item.precos.reduce((a, b) => a.preco < b.preco ? a : b);
     return `
       <div class="historico-item">
         <div class="hist-left">
@@ -160,12 +216,16 @@ function renderizarHistorico() {
 
 function renderizarFavoritos() {
   if (!favoritosAppsList) return;
-  favoritosAppsList.innerHTML = APPS.map(app => `
+  const nomes = Object.keys(ESTILO_APPS);
+  favoritosAppsList.innerHTML = nomes.map(nome => {
+    const estilo = estiloDoProvider(nome);
+    return `
     <div class="app-card-fav">
-      <div class="app-logo" style="background:${app.iconBg};color:${app.iconColor};">${app.logo}</div>
-      <div class="app-info"><div class="app-nome">${app.nome}</div><div class="app-rating">★ ${(4.5+Math.random()*0.5).toFixed(1)} · ${app.etaMin+Math.floor(Math.random()*3)} min</div><div class="app-preco" style="font-size:18px;">R$ ${(app.fatorBase+Math.random()*10).toFixed(2)}</div></div>
-      <button class="app-btn" onclick="abrirApp('${app.id}')">Escolher</button>
-    </div>`).join('');
+      <div class="app-logo" style="background:${estilo.iconBg};color:${estilo.iconColor};">${estilo.logo}</div>
+      <div class="app-info"><div class="app-nome">${nome}</div></div>
+      <button class="app-btn" onclick="abrirApp('${nome}')">Escolher</button>
+    </div>`;
+  }).join('');
 }
 
 function atualizarPerfil() {
@@ -175,7 +235,6 @@ function atualizarPerfil() {
     const melhor = item.precos.reduce((a, b) => a.preco < b.preco ? a : b);
     return acc + melhor.preco;
   }, 0);
-  const avaliacao = total > 0 ? (4.5 + Math.random() * 0.5) : 0;
 
   document.querySelectorAll('.perfil-stats-row .stat-item .stat-num').forEach(el => {
     const parent = el.closest('.stat-item');
@@ -184,39 +243,16 @@ function atualizarPerfil() {
     if (label && label.textContent.trim() === 'Corridas') {
       el.textContent = total;
     }
-    if (label && label.textContent.trim() === 'Avaliação') {
-      el.textContent = avaliacao.toFixed(1) + ' ★';
-    }
   });
 
   const totalCorridas = document.getElementById('totalCorridas');
   const totalGasto = document.getElementById('totalGasto');
-  const avaliacaoMedia = document.getElementById('avaliacaoMedia');
   if (totalCorridas) totalCorridas.textContent = total;
   if (totalGasto) totalGasto.textContent = `R$ ${gasto.toFixed(0)}`;
-  if (avaliacaoMedia) avaliacaoMedia.textContent = avaliacao.toFixed(1) + ' ★';
 }
 
 document.querySelectorAll('.perfil-menu-item').forEach(item => {
-  item.addEventListener('click', function(e) {
-    const title = this.querySelector('.menu-title')?.textContent || '';
-    
-    if (title === 'Sair') {
-      if (confirm('Tem certeza que deseja sair?')) {
-        alert('Sessão encerrada!');
-      }
-    } else if (title === 'Informações pessoais') {
-      alert('Abrindo informações pessoais...');
-    } else if (title === 'Segurança') {
-      alert('Abrindo configurações de segurança...');
-    } else if (title === 'Favoritos') {
-      switchTab('favoritos');
-    }
-  });
-});
-
-document.querySelectorAll('.perfil-menu-item').forEach(item => {
-  item.addEventListener('click', function() {
+  item.addEventListener('click', function () {
     const title = this.querySelector('.menu-title')?.textContent || '';
     if (title === 'Sair') {
       if (confirm('Tem certeza que deseja sair?')) {
@@ -260,15 +296,19 @@ async function carregarSugestoes(tipo) {
   } catch { sugDiv.style.display = 'none'; }
 }
 
-window.abrirApp = function(appId) {
+window.abrirApp = function (providerName) {
   if (!localOrigem || !localDestino) return;
   const { lat: oLat, lon: oLon } = localOrigem;
   const { lat: dLat, lon: dLon } = localDestino;
-  const links = { uber: `https://m.uber.com/ul/?action=setPickup&pickup[latitude]=${oLat}&pickup[longitude]=${oLon}&dropoff[latitude]=${dLat}&dropoff[longitude]=${dLon}`, '99': 'https://99app.com', indriver: 'https://indriver.com' };
-  window.open(links[appId] || '#', '_blank');
+  const links = {
+    Uber: `https://m.uber.com/ul/?action=setPickup&pickup[latitude]=${oLat}&pickup[longitude]=${oLon}&dropoff[latitude]=${dLat}&dropoff[longitude]=${dLon}`,
+    '99': 'https://99app.com',
+    inDriver: 'https://indriver.com',
+  };
+  window.open(links[providerName] || '#', '_blank');
 };
 
-function mostrarErro(msg) { erroDiv.textContent = msg; erroDiv.style.display = 'block'; setTimeout(()=>erroDiv.style.display='none', 5000); }
+function mostrarErro(msg) { erroDiv.textContent = msg; erroDiv.style.display = 'block'; setTimeout(() => erroDiv.style.display = 'none', 5000); }
 
 document.addEventListener('DOMContentLoaded', () => {
   renderizarHistorico();
