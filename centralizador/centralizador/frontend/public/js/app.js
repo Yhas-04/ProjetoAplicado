@@ -175,7 +175,6 @@ function renderizarComparacao(providers, distanciaKm) {
 
     let badge = '';
     if (isMelhor) badge = `<span class="app-badge">Mais barato</span>`;
-    else if (isFastest) badge = `<span class="app-badge" style="background:#FEF3C7;color:#9A7B00;">Mais rápido</span>`;
 
     return `
       <div class="app-card" onclick="abrirApp('${provider.providerName}')">
@@ -192,6 +191,7 @@ function renderizarComparacao(providers, distanciaKm) {
   }).join('');
 
   comparacaoPanel.style.display = 'flex';
+  resultadoDiv.classList.add('panel-open');
 }
 
 function renderizarInfoRota(comparacao) {
@@ -462,6 +462,10 @@ function atualizarPerfil() {
       document.querySelectorAll('.perfil-email').forEach(el => {
         if (el) el.textContent = user.email || 'usuario@email.com';
       });
+      const perfilNomeMobile = document.getElementById('perfilNomeMobile');
+      if (perfilNomeMobile) perfilNomeMobile.textContent = user.name || 'Usuário';
+      const perfilEmailMobile = document.getElementById('perfilEmailMobile');
+      if (perfilEmailMobile) perfilEmailMobile.textContent = user.email || 'usuario@email.com';
     }
   } catch (e) {
     console.error('Erro ao carregar perfil:', e);
