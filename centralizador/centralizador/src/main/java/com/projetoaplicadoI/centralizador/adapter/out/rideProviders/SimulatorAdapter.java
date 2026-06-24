@@ -1,4 +1,4 @@
-package com.projetoaplicadoI.centralizador.adapter.out.rideProviders;
+/*package com.projetoaplicadoI.centralizador.adapter.out.rideProviders;
 import com.projetoaplicadoI.centralizador.domain.model.Location;
 import com.projetoaplicadoI.centralizador.domain.model.Quote;
 import com.projetoaplicadoI.centralizador.domain.port.out.RideProviderPort;
@@ -72,3 +72,4 @@ public class SimulatorAdapter implements RideProviderPort {
     }
 
 }
+*/
