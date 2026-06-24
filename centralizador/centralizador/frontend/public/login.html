@@ -32,8 +32,7 @@
                 </div>
             </div>
 
-            <button class="login-btn" id="btnEntrar" onclick="fazerLogin()">Entrar</button>
-
+<button class="login-btn" id="btnEntrar" onclick="login()">Entrar</button>
             <div class="login-divider"><span>ou</span></div>
 
             <button class="login-google">
@@ -50,30 +49,6 @@
         </div>
     </div>
 
-    <!-- Lógica original mantida -->
-    <script>
-        function fazerLogin() {
-            const email = document.getElementById('email').value;
-            const senha = document.getElementById('senha').value;
-            const msgErro = document.getElementById('msgErro');
-
-            if (!email || !senha) {
-                msgErro.style.display = 'block';
-                msgErro.innerText = 'Por favor, preencha todos os campos.';
-                return;
-            }
-
-            msgErro.style.display = 'none';
-            localStorage.setItem('auth_token', 'fake_token_123');
-            window.location.href = 'index.html';
-        }
-
-        document.getElementById('senha').addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') fazerLogin();
-        });
-        document.getElementById('email').addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') fazerLogin();
-        });
-    </script>
+ <script src="js/login.js"></script>
 </body>
 </html>
