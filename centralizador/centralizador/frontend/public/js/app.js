@@ -48,16 +48,16 @@ async function compararPrecos(origem, destino) {
     },
   };
 
-  // Usa o proxy do Nginx ou a URL direta
-  const response = await fetch('/api/ride/compare', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
+ const token = localStorage.getItem('auth_token');
 
-  if (!response.ok) {
-    throw new Error(`Erro ao consultar preços (HTTP ${response.status})`);
-  }
+const response = await fetch('/api/ride/compare', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+    },
+    body: JSON.stringify(payload),
+});
 
   return response.json();
 }
