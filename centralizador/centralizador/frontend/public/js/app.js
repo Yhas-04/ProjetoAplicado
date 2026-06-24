@@ -18,8 +18,7 @@ let localOrigem = null;
 let localDestino = null;
 let timeoutSug = null;
 
-// Mapa de aparência visual por provider (o backend não manda cor/logo, então
-// mantemos só o "estilo" no front e casamos pelo nome).
+// Mapa de aparência visual por provider
 const ESTILO_APPS = {
   Simulator: { barColor: '#000000', iconBg: '#E8E8E8', iconColor: '#000', logo: 'S' },
   Uber:      { barColor: '#000000', iconBg: '#E8E8E8', iconColor: '#000', logo: 'U' },
@@ -33,7 +32,7 @@ function estiloDoProvider(nome) {
 }
 
 // ---------------------------------------------------------------------
-// Chamada real ao backend (Centralizador na porta 8080, via Nginx /api/)
+// Chamada real ao backend (Centralizador)
 // ---------------------------------------------------------------------
 async function compararPrecos(origem, destino) {
   const payload = {
@@ -49,6 +48,7 @@ async function compararPrecos(origem, destino) {
     },
   };
 
+  // Usa o proxy do Nginx ou a URL direta
   const response = await fetch('/api/ride/compare', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -59,7 +59,7 @@ async function compararPrecos(origem, destino) {
     throw new Error(`Erro ao consultar preços (HTTP ${response.status})`);
   }
 
-  return response.json(); // formato descrito pelo Centralizador
+  return response.json();
 }
 
 function switchTab(tab) {
@@ -95,6 +95,18 @@ btnBuscar.addEventListener('click', buscarRota);
   inp.addEventListener('input', () => agendarSugestoes(inp === inputOrigem ? 'origem' : 'destino'));
 });
 
+// Função para calcular distância entre coordenadas
+function calcularDistancia(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 async function buscarRota() {
   const origemText = inputOrigem.value.trim();
   const destinoText = inputDestino.value.trim();
@@ -106,19 +118,34 @@ async function buscarRota() {
   resultadoDiv.style.display = 'none';
 
   try {
-    const { origem, destino, distanciaKm } = await calcularRota(origemText, destinoText);
+    let origem, destino, distanciaKm;
+    
+    // VERIFICAÇÃO CRÍTICA: Se temos os dados de coordenadas salvos, usa eles
+    if (localOrigem && localDestino) {
+      console.log('Usando dados salvos de sugestão');
+      origem = localOrigem;
+      destino = localDestino;
+      distanciaKm = calcularDistancia(origem.lat, origem.lon, destino.lat, destino.lon);
+    } else {
+      // Busca normal via geocodificação
+      console.log('Fazendo geocodificação normal');
+      const resultado = await calcularRota(origemText, destinoText);
+      origem = resultado.origem;
+      destino = resultado.destino;
+      distanciaKm = resultado.distanciaKm;
+    }
+
+    // Salva os dados para uso futuro
     localOrigem = origem;
     localDestino = destino;
 
-    // Antes: const precos = simularPrecos(distanciaKm)  -> dados fake no front
-    // Agora: pergunta pro Centralizador (8080), que por sua vez consulta
-    // o ride-app-simulator (8084) e qualquer outro provider real.
     const comparacao = await compararPrecos(origem, destino);
 
-    renderizarComparacao(comparacao.providers, comparacao.distanceKm);
+    renderizarComparacao(comparacao.providers, comparacao.distanceKm || distanciaKm);
     renderizarInfoRota(comparacao);
     salvarHistorico(comparacao);
   } catch (err) {
+    console.error('Erro na busca:', err);
     mostrarErro(err.message || 'Erro ao calcular rota.');
   } finally {
     loadingDiv.style.display = 'none';
@@ -169,13 +196,13 @@ function renderizarComparacao(providers, distanciaKm) {
 
 function renderizarInfoRota(comparacao) {
   const { distanceKm, providers } = comparacao;
-  const precoMedio = providers.length
+  const precoMedio = providers && providers.length
     ? providers.reduce((acc, p) => acc + p.price, 0) / providers.length
     : 0;
 
-  document.getElementById('distanciaVal').textContent = `${distanceKm.toFixed(1)} km`;
-  document.getElementById('tempoVal').textContent = `~${Math.round(distanceKm * 2.5)} min`;
-  document.getElementById('appsVal').textContent = `${providers.length} opç${providers.length === 1 ? 'ão' : 'ões'}`;
+  document.getElementById('distanciaVal').textContent = `${(distanceKm || 0).toFixed(1)} km`;
+  document.getElementById('tempoVal').textContent = `~${Math.round((distanceKm || 0) * 2.5)} min`;
+  document.getElementById('appsVal').textContent = `${providers ? providers.length : 0} opç${providers && providers.length === 1 ? 'ão' : 'ões'}`;
   document.getElementById('precoVal').textContent = `R$ ${precoMedio.toFixed(2)}`;
   resultadoDiv.style.display = 'flex';
 }
@@ -188,8 +215,8 @@ function salvarHistorico(comparacao) {
     data: new Date().toLocaleString('pt-BR'),
     origem: (originName || '').split(',')[0],
     destino: (destinationName || '').split(',')[0],
-    distancia: distanceKm.toFixed(1),
-    precos: providers.map(p => ({ nome: p.providerName, preco: p.price })),
+    distancia: (distanceKm || 0).toFixed(1),
+    precos: providers ? providers.map(p => ({ nome: p.providerName, preco: p.price })) : [],
   });
   localStorage.setItem('historico_corridas', JSON.stringify(hist.slice(0, 30)));
 }
@@ -199,11 +226,11 @@ function renderizarHistorico() {
   if (!listaHistorico) return;
   if (!hist.length) { listaHistorico.innerHTML = '<div class="historico-item" style="justify-content:center;color:#6A6580;">Nenhuma corrida ainda.</div>'; return; }
   listaHistorico.innerHTML = hist.map(item => {
-    const melhor = item.precos.reduce((a, b) => a.preco < b.preco ? a : b);
+    const melhor = item.precos && item.precos.length ? item.precos.reduce((a, b) => a.preco < b.preco ? a : b) : { preco: 0 };
     return `
       <div class="historico-item">
         <div class="hist-left">
-          <div class="hist-logo" style="background:${['#E8E8E8','#FEF3C7','#D1FAE5'][Math.floor(Math.random()*3)]}">${item.precos[0].nome[0]}</div>
+          <div class="hist-logo" style="background:${['#E8E8E8','#FEF3C7','#D1FAE5'][Math.floor(Math.random()*3)]}">${item.precos && item.precos.length ? item.precos[0].nome[0] : '?'}</div>
           <div class="hist-info"><h5>${item.origem} → ${item.destino}</h5><span>${item.data} · ${item.distancia} km</span></div>
         </div>
         <div class="hist-right">
@@ -232,6 +259,7 @@ function atualizarPerfil() {
   const hist = JSON.parse(localStorage.getItem('historico_corridas') || '[]');
   const total = hist.length;
   const gasto = hist.reduce((acc, item) => {
+    if (!item.precos || !item.precos.length) return acc;
     const melhor = item.precos.reduce((a, b) => a.preco < b.preco ? a : b);
     return acc + melhor.preco;
   }, 0);
@@ -284,13 +312,31 @@ async function carregarSugestoes(tipo) {
     if (!lista.length) { sugDiv.style.display = 'none'; return; }
     sugDiv.innerHTML = lista.map(s => `<div class="sugestao-item" data-lat="${s.lat}" data-lon="${s.lon}" data-nome="${s.nome.replace(/"/g,'&quot;')}">${s.nome}</div>`).join('');
     sugDiv.style.display = 'block';
-    sugDiv.querySelectorAll('.sugestao-item').forEach(el => {
+    
+    // Remove event listeners antigos
+    const newSugDiv = sugDiv.cloneNode(true);
+    sugDiv.parentNode.replaceChild(newSugDiv, sugDiv);
+    
+    newSugDiv.querySelectorAll('.sugestao-item').forEach(el => {
       el.addEventListener('click', () => {
-        input.value = el.dataset.nome;
-        sugDiv.style.display = 'none';
-        if (tipo === 'origem') localOrigem = { lat: parseFloat(el.dataset.lat), lon: parseFloat(el.dataset.lon), nome: el.dataset.nome };
-        else localDestino = { lat: parseFloat(el.dataset.lat), lon: parseFloat(el.dataset.lon), nome: el.dataset.nome };
-        if (localOrigem && localDestino) buscarRota();
+        const nome = el.dataset.nome;
+        const lat = parseFloat(el.dataset.lat);
+        const lon = parseFloat(el.dataset.lon);
+        
+        input.value = nome;
+        newSugDiv.style.display = 'none';
+        
+        // SALVA OS DADOS DIRETAMENTE
+        if (tipo === 'origem') {
+          localOrigem = { lat, lon, nome };
+        } else {
+          localDestino = { lat, lon, nome };
+        }
+        
+        // CHAMA A BUSCA - AGORA USANDO OS DADOS SALVOS
+        if (localOrigem && localDestino) {
+          buscarRota();
+        }
       });
     });
   } catch { sugDiv.style.display = 'none'; }
@@ -308,7 +354,11 @@ window.abrirApp = function (providerName) {
   window.open(links[providerName] || '#', '_blank');
 };
 
-function mostrarErro(msg) { erroDiv.textContent = msg; erroDiv.style.display = 'block'; setTimeout(() => erroDiv.style.display = 'none', 5000); }
+function mostrarErro(msg) { 
+  erroDiv.textContent = msg; 
+  erroDiv.style.display = 'block'; 
+  setTimeout(() => erroDiv.style.display = 'none', 5000); 
+}
 
 document.addEventListener('DOMContentLoaded', () => {
   renderizarHistorico();
