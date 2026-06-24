@@ -61,6 +61,9 @@
                     <div id="loading" class="status-loading" style="display:none;"><span class="spinner"></span> Buscando...</div>
                     <div id="erro" class="status-erro" style="display:none;"></div>
                     <button type="button" id="btnBuscar" class="btn-primary btn-full">Buscar Corrida</button>
+                    <button type="button" id="btnFavoritar" class="btn-primary btn-full btn-favoritar" style="margin-top: 8px;">
+                        <i class="ti ti-heart"></i> Favoritar Rota
+                    </button>
                 </div>
             </div>
 
@@ -76,11 +79,11 @@
 
             <div id="comparacao" class="comparacao-panel" style="display:none;">
                 <div class="panel-header">
-                    <span class="panel-route">Centro → IFC</span>
+                    <span class="panel-route" id="panelRoute">Centro → IFC</span>
                     <span class="panel-close" onclick="document.getElementById('comparacao').style.display='none'">✕</span>
                 </div>
                 <h3 class="panel-title">Corridas encontradas</h3>
-                <div class="panel-meta"><span>● 5.2 km</span> · <span>~12 min</span> · <span>4 opcoes</span></div>
+                <div class="panel-meta"><span>● <span id="panelDistancia">5.2</span> km</span> · <span>~<span id="panelTempo">12</span> min</span> · <span><span id="panelApps">4</span> opções</span></div>
                 <div class="panel-list" id="listaApps"></div>
             </div>
         </div>
@@ -100,15 +103,8 @@
     <div id="tab-favoritos" class="tab-content">
         <div class="page-wrapper light-bg">
             <div class="page-header"><h2>Favoritos</h2></div>
-            <div class="favoritos-stats"><span>4 apps</span> · <span>3 rotas</span></div>
-            <h4 class="section-title">Rotas frequentes</h4>
-            <div class="rotas-grid">
-                <div class="rota-card"><div class="rota-icon">🏠</div><div><div class="rota-nome">Casa → Trabalho</div><div class="rota-meta">Diário · 8.2 km</div></div><span class="rota-tag">Diário</span></div>
-                <div class="rota-card"><div class="rota-icon">🏋️</div><div><div class="rota-nome">Casa → Academia</div><div class="rota-meta">3x semana · 3.4 km</div></div><span class="rota-tag">3x semana</span></div>
-                <div class="rota-card"><div class="rota-icon">🛍️</div><div><div class="rota-nome">Trabalho → Shopping</div><div class="rota-meta">Semanal · 5.1 km</div></div><span class="rota-tag">Semanal</span></div>
-            </div>
-            <h4 class="section-title">Apps favoritos</h4>
-            <div class="apps-favoritos-grid" id="favoritosAppsList"></div>
+            <div class="favoritos-stats"><span id="favoritosTotal">0</span> rotas favoritas</div>
+            <div id="rotasFavoritasContainer" class="rotas-grid"></div>
         </div>
     </div>
 
@@ -141,7 +137,7 @@
         </div>
     </div>
 
-        <div id="tab-perfil" class="tab-content">
+    <div id="tab-perfil" class="tab-content">
         <div class="page-wrapper light-bg desktop-only">
             <div class="perfil-wrapper">
                 <div class="perfil-header">
@@ -266,6 +262,7 @@
                     </div>
                 </div>
 
+                <div class="perfil-footer">
                     <div class="footer-brand">RideHub</div>
                     <div class="footer-sub">Centralizador de apps de corrida</div>
                     <div class="footer-copy">© 2026 RideHub Inc. Todos os direitos reservados.</div>

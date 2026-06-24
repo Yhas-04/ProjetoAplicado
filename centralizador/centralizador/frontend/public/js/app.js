@@ -3,22 +3,24 @@ import { calcularRota } from './mapaLeaflet.js';
 
 const token = localStorage.getItem('auth_token');
 if (!token) window.location.href = 'login.html';
+
 const inputOrigem = document.getElementById('origem');
 const inputDestino = document.getElementById('destino');
 const btnBuscar = document.getElementById('btnBuscar');
+const btnFavoritar = document.getElementById('btnFavoritar');
 const loadingDiv = document.getElementById('loading');
 const erroDiv = document.getElementById('erro');
 const resultadoDiv = document.getElementById('resultado');
 const comparacaoPanel = document.getElementById('comparacao');
 const listaApps = document.getElementById('listaApps');
 const listaHistorico = document.getElementById('listaHistorico');
-const favoritosAppsList = document.getElementById('favoritosAppsList');
+const rotasFavoritasContainer = document.getElementById('rotasFavoritasContainer');
 
 let localOrigem = null;
 let localDestino = null;
 let timeoutSug = null;
+let ultimaComparacao = null;
 
-// Mapa de aparência visual por provider
 const ESTILO_APPS = {
   Simulator: { barColor: '#000000', iconBg: '#E8E8E8', iconColor: '#000', logo: 'S' },
   Uber:      { barColor: '#000000', iconBg: '#E8E8E8', iconColor: '#000', logo: 'U' },
@@ -31,9 +33,114 @@ function estiloDoProvider(nome) {
   return ESTILO_APPS[nome] || ESTILO_PADRAO;
 }
 
-// ---------------------------------------------------------------------
-// Chamada real ao backend (Centralizador)
-// ---------------------------------------------------------------------
+// ============================================
+// API HELPER
+// ============================================
+
+const API_BASE = '/api';
+
+async function apiRequest(endpoint, method = 'GET', data = null) {
+    const token = localStorage.getItem('auth_token');
+    const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+    };
+    
+    const options = {
+        method,
+        headers,
+        body: data ? JSON.stringify(data) : null
+    };
+    
+    const response = await fetch(`${API_BASE}${endpoint}`, options);
+    if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.message || `Erro ${response.status}`);
+    }
+    return response.json();
+}
+
+// ============================================
+// HISTÓRICO - BACKEND
+// ============================================
+
+async function salvarHistoricoBackend(comparacao) {
+    try {
+        await apiRequest('/historico', 'POST', {
+            origem: comparacao.originName,
+            destino: comparacao.destinationName,
+            distancia: comparacao.distanceKm,
+            providers: comparacao.providers,
+            preco_medio: comparacao.providers.reduce((acc, p) => acc + p.price, 0) / comparacao.providers.length
+        });
+    } catch (error) {
+        console.error('Erro ao salvar histórico:', error);
+    }
+}
+
+async function carregarHistoricoBackend() {
+    try {
+        return await apiRequest('/historico');
+    } catch (error) {
+        console.error('Erro ao carregar histórico:', error);
+        return [];
+    }
+}
+
+// ============================================
+// FAVORITOS - BACKEND
+// ============================================
+
+async function salvarFavoritoBackend(origem, destino, providers, distanciaKm) {
+    const data = await apiRequest('/favoritos', 'POST', {
+        origem_nome: origem.nome,
+        origem_lat: origem.lat,
+        origem_lon: origem.lon,
+        destino_nome: destino.nome,
+        destino_lat: destino.lat,
+        destino_lon: destino.lon,
+        distancia: distanciaKm,
+        providers: providers || [],
+        melhor_preco: providers && providers.length ? Math.min(...providers.map(p => p.price)) : 0
+    });
+    return data;
+}
+
+async function removerFavoritoBackend(id) {
+    await apiRequest(`/favoritos/${id}`, 'DELETE');
+}
+
+async function carregarFavoritosBackend() {
+    try {
+        return await apiRequest('/favoritos');
+    } catch (error) {
+        console.error('Erro ao carregar favoritos:', error);
+        return [];
+    }
+}
+
+async function verificarFavoritoBackend(origemNome, destinoNome) {
+    try {
+        const data = await apiRequest(`/favoritos/check?origem=${encodeURIComponent(origemNome)}&destino=${encodeURIComponent(destinoNome)}`);
+        return data.favoritado;
+    } catch (error) {
+        console.error('Erro ao verificar favorito:', error);
+        return false;
+    }
+}
+
+async function atualizarUsoFavoritoBackend(id) {
+    try {
+        await apiRequest(`/favoritos/${id}/usar`, 'PATCH');
+    } catch (error) {
+        console.error('Erro ao atualizar uso:', error);
+    }
+}
+
+// ============================================
+// FUNÇÕES PRINCIPAIS
+// ============================================
+
 async function compararPrecos(origem, destino) {
   const payload = {
     origin: {
@@ -48,7 +155,6 @@ async function compararPrecos(origem, destino) {
     },
   };
 
-  // Usa o proxy do Nginx ou a URL direta
   const response = await fetch('/api/ride/compare', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -77,7 +183,7 @@ function switchTab(tab) {
     el.classList.add('active');
   }
   if (tab === 'historico') renderizarHistorico();
-  if (tab === 'favoritos') renderizarFavoritos();
+  if (tab === 'favoritos') renderizarRotasFavoritas();
   if (tab === 'perfil') atualizarPerfil();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -95,7 +201,6 @@ btnBuscar.addEventListener('click', buscarRota);
   inp.addEventListener('input', () => agendarSugestoes(inp === inputOrigem ? 'origem' : 'destino'));
 });
 
-// Função para calcular distância entre coordenadas
 function calcularDistancia(lat1, lon1, lat2, lon2) {
   const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -120,30 +225,28 @@ async function buscarRota() {
   try {
     let origem, destino, distanciaKm;
     
-    // VERIFICAÇÃO CRÍTICA: Se temos os dados de coordenadas salvos, usa eles
     if (localOrigem && localDestino) {
-      console.log('Usando dados salvos de sugestão');
       origem = localOrigem;
       destino = localDestino;
       distanciaKm = calcularDistancia(origem.lat, origem.lon, destino.lat, destino.lon);
     } else {
-      // Busca normal via geocodificação
-      console.log('Fazendo geocodificação normal');
       const resultado = await calcularRota(origemText, destinoText);
       origem = resultado.origem;
       destino = resultado.destino;
       distanciaKm = resultado.distanciaKm;
     }
 
-    // Salva os dados para uso futuro
     localOrigem = origem;
     localDestino = destino;
 
     const comparacao = await compararPrecos(origem, destino);
+    ultimaComparacao = comparacao;
+
+    await salvarHistoricoBackend(comparacao);
 
     renderizarComparacao(comparacao.providers, comparacao.distanceKm || distanciaKm);
     renderizarInfoRota(comparacao);
-    salvarHistorico(comparacao);
+    await atualizarBotaoFavoritar();
   } catch (err) {
     console.error('Erro na busca:', err);
     mostrarErro(err.message || 'Erro ao calcular rota.');
@@ -164,6 +267,11 @@ function renderizarComparacao(providers, distanciaKm) {
   const maiorPreco = ordenados[ordenados.length - 1].price;
   const range = maiorPreco - menorPreco || 1;
   const menorEta = Math.min(...ordenados.map(p => p.estimatedTimeMinutes));
+
+  document.getElementById('panelRoute').textContent = `${localOrigem.nome.split(',')[0]} → ${localDestino.nome.split(',')[0]}`;
+  document.getElementById('panelDistancia').textContent = (distanciaKm || 0).toFixed(1);
+  document.getElementById('panelTempo').textContent = Math.round((distanciaKm || 0) * 2.5);
+  document.getElementById('panelApps').textContent = providers.length;
 
   listaApps.innerHTML = ordenados.map(provider => {
     const estilo = estiloDoProvider(provider.providerName);
@@ -207,161 +315,322 @@ function renderizarInfoRota(comparacao) {
   resultadoDiv.style.display = 'flex';
 }
 
-function salvarHistorico(comparacao) {
-  const { originName, destinationName, distanceKm, providers } = comparacao;
-  const hist = JSON.parse(localStorage.getItem('historico_corridas') || '[]');
-  hist.unshift({
-    id: Date.now(),
-    data: new Date().toLocaleString('pt-BR'),
-    origem: (originName || '').split(',')[0],
-    destino: (destinationName || '').split(',')[0],
-    distancia: (distanceKm || 0).toFixed(1),
-    precos: providers ? providers.map(p => ({ nome: p.providerName, preco: p.price })) : [],
-  });
-  localStorage.setItem('historico_corridas', JSON.stringify(hist.slice(0, 30)));
+async function renderizarHistorico() {
+    if (!listaHistorico) return;
+    
+    try {
+        const hist = await carregarHistoricoBackend();
+        
+        if (!hist || !hist.length) {
+            listaHistorico.innerHTML = '<div class="historico-item" style="justify-content:center;color:#6A6580;">Nenhuma corrida ainda.</div>';
+            return;
+        }
+        
+        listaHistorico.innerHTML = hist.map(item => {
+            const melhor = item.providers && item.providers.length 
+                ? item.providers.reduce((a, b) => a.price < b.price ? a : b) 
+                : { price: 0 };
+                
+            return `
+                <div class="historico-item">
+                    <div class="hist-left">
+                        <div class="hist-logo" style="background:${['#E8E8E8','#FEF3C7','#D1FAE5'][Math.floor(Math.random()*3)]}">
+                            ${item.providers && item.providers.length ? item.providers[0].providerName[0] : '?'}
+                        </div>
+                        <div class="hist-info">
+                            <h5>${item.origem.split(',')[0]} → ${item.destino.split(',')[0]}</h5>
+                            <span>${new Date(item.created_at).toLocaleString('pt-BR')} · ${item.distancia.toFixed(1)} km</span>
+                        </div>
+                    </div>
+                    <div class="hist-right">
+                        <span class="hist-preco">R$ ${melhor.price.toFixed(2)}</span>
+                        <span class="hist-status concluida">Concluída</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (error) {
+        listaHistorico.innerHTML = '<div class="historico-item" style="justify-content:center;color:#DC2626;">Erro ao carregar histórico.</div>';
+    }
 }
 
-function renderizarHistorico() {
-  const hist = JSON.parse(localStorage.getItem('historico_corridas') || '[]');
-  if (!listaHistorico) return;
-  if (!hist.length) { listaHistorico.innerHTML = '<div class="historico-item" style="justify-content:center;color:#6A6580;">Nenhuma corrida ainda.</div>'; return; }
-  listaHistorico.innerHTML = hist.map(item => {
-    const melhor = item.precos && item.precos.length ? item.precos.reduce((a, b) => a.preco < b.preco ? a : b) : { preco: 0 };
-    return `
-      <div class="historico-item">
-        <div class="hist-left">
-          <div class="hist-logo" style="background:${['#E8E8E8','#FEF3C7','#D1FAE5'][Math.floor(Math.random()*3)]}">${item.precos && item.precos.length ? item.precos[0].nome[0] : '?'}</div>
-          <div class="hist-info"><h5>${item.origem} → ${item.destino}</h5><span>${item.data} · ${item.distancia} km</span></div>
-        </div>
-        <div class="hist-right">
-          <span class="hist-preco">R$ ${melhor.preco.toFixed(2)}</span>
-          <span class="hist-status concluida">Concluída</span>
-        </div>
-      </div>`;
-  }).join('');
+async function salvarRotaFavorita(origem, destino, providers, distanciaKm) {
+    try {
+        await salvarFavoritoBackend(origem, destino, providers, distanciaKm);
+        mostrarNotificacao('Rota favoritada com sucesso! ❤️', 'success');
+        await renderizarRotasFavoritas();
+        await atualizarBotaoFavoritar();
+        return true;
+    } catch (error) {
+        if (error.message && error.message.includes('já está nos favoritos')) {
+            mostrarNotificacao('Esta rota já está nos favoritos!', 'warning');
+        } else {
+            mostrarNotificacao('Erro ao favoritar rota', 'error');
+        }
+        return false;
+    }
 }
 
-function renderizarFavoritos() {
-  if (!favoritosAppsList) return;
-  const nomes = Object.keys(ESTILO_APPS);
-  favoritosAppsList.innerHTML = nomes.map(nome => {
-    const estilo = estiloDoProvider(nome);
-    return `
-    <div class="app-card-fav">
-      <div class="app-logo" style="background:${estilo.iconBg};color:${estilo.iconColor};">${estilo.logo}</div>
-      <div class="app-info"><div class="app-nome">${nome}</div></div>
-      <button class="app-btn" onclick="abrirApp('${nome}')">Escolher</button>
-    </div>`;
-  }).join('');
+async function removerRotaFavorita(id) {
+    try {
+        await removerFavoritoBackend(id);
+        mostrarNotificacao('Rota removida dos favoritos', 'info');
+        await renderizarRotasFavoritas();
+        await atualizarBotaoFavoritar();
+    } catch (error) {
+        mostrarNotificacao('Erro ao remover favorito', 'error');
+    }
+}
+
+async function isRotaFavoritada(origemNome, destinoNome) {
+    return await verificarFavoritoBackend(origemNome, destinoNome);
+}
+
+async function renderizarRotasFavoritas() {
+    if (!rotasFavoritasContainer) return;
+    
+    try {
+        const favoritos = await carregarFavoritosBackend();
+        document.getElementById('favoritosTotal').textContent = favoritos.length;
+        
+        if (!favoritos.length) {
+            rotasFavoritasContainer.innerHTML = `
+                <div class="favoritos-empty" style="grid-column: 1 / -1;">
+                    <i class="ti ti-heart" style="font-size: 48px; color: #d1d5db;"></i>
+                    <p style="color: #6A6580; margin-top: 12px;">Nenhuma rota favoritada ainda.</p>
+                    <p style="color: #9CA3AF; font-size: 13px;">Faça uma busca e clique em "Favoritar Rota"</p>
+                </div>
+            `;
+            return;
+        }
+        
+        rotasFavoritasContainer.innerHTML = favoritos.map(rota => {
+            const providersHtml = rota.providers && rota.providers.length
+                ? rota.providers.map(p => `<span class="provider-tag">${p.providerName}</span>`).join('')
+                : '<span style="color: #9CA3AF; font-size: 11px;">Nenhum app disponível</span>';
+            
+            const dataFormatada = new Date(rota.created_at).toLocaleDateString('pt-BR', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
+            });
+            
+            return `
+                <div class="rota-card favorita" data-id="${rota.id}">
+                    <div class="rota-icon">📍</div>
+                    <div style="flex:1; min-width:0;">
+                        <div class="rota-nome">${rota.origem_nome.split(',')[0]} → ${rota.destino_nome.split(',')[0]}</div>
+                        <div class="rota-meta">
+                            ${rota.distancia.toFixed(1)} km · 
+                            R$ ${rota.melhor_preco.toFixed(2)} · 
+                            ${dataFormatada}
+                            ${rota.vezes_usada > 0 ? ` · ${rota.vezes_usada}x usada` : ''}
+                        </div>
+                        <div class="rota-providers">${providersHtml}</div>
+                    </div>
+                    <div style="display: flex; gap: 4px; align-items: center;">
+                        <span class="rota-tag" style="background: #FEF3C7; color: #9A7B00;">❤️</span>
+                        <button class="btn-remover-fav" data-id="${rota.id}">
+                            <i class="ti ti-trash" style="font-size: 16px;"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        rotasFavoritasContainer.querySelectorAll('.btn-remover-fav').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const id = parseInt(btn.dataset.id);
+                if (confirm('Remover esta rota dos favoritos?')) {
+                    await removerRotaFavorita(id);
+                }
+            });
+        });
+        
+        rotasFavoritasContainer.querySelectorAll('.rota-card.favorita').forEach(card => {
+            card.addEventListener('click', async function() {
+                const id = parseInt(this.dataset.id);
+                const favoritos = await carregarFavoritosBackend();
+                const rota = favoritos.find(r => r.id === id);
+                if (rota) {
+                    document.getElementById('origem').value = rota.origem_nome;
+                    document.getElementById('destino').value = rota.destino_nome;
+                    localOrigem = { nome: rota.origem_nome, lat: rota.origem_lat, lon: rota.origem_lon };
+                    localDestino = { nome: rota.destino_nome, lat: rota.destino_lat, lon: rota.destino_lon };
+                    await atualizarUsoFavoritoBackend(id);
+                    buscarRota();
+                    switchTab('busca');
+                }
+            });
+        });
+    } catch (error) {
+        rotasFavoritasContainer.innerHTML = '<div class="favoritos-empty" style="grid-column: 1 / -1; color:#DC2626;">Erro ao carregar favoritos.</div>';
+    }
+}
+
+async function atualizarBotaoFavoritar() {
+    if (!btnFavoritar || !localOrigem || !localDestino) return;
+    
+    const isFav = await isRotaFavoritada(localOrigem.nome, localDestino.nome);
+    if (isFav) {
+        btnFavoritar.innerHTML = '<i class="ti ti-heart-filled"></i> Favoritado';
+        btnFavoritar.classList.add('ativo');
+    } else {
+        btnFavoritar.innerHTML = '<i class="ti ti-heart"></i> Favoritar Rota';
+        btnFavoritar.classList.remove('ativo');
+    }
+}
+
+function mostrarNotificacao(mensagem, tipo = 'info') {
+    const existing = document.querySelector('.toast-notification');
+    if (existing) existing.remove();
+    
+    const toast = document.createElement('div');
+    toast.className = 'toast-notification';
+    const cores = {
+        success: '#16A34A',
+        warning: '#F59E0B',
+        error: '#DC2626',
+        info: '#6C5DD3'
+    };
+    
+    toast.style.borderLeftColor = cores[tipo] || cores.info;
+    toast.textContent = mensagem;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
 }
 
 function atualizarPerfil() {
-  const hist = JSON.parse(localStorage.getItem('historico_corridas') || '[]');
-  const total = hist.length;
-  const gasto = hist.reduce((acc, item) => {
-    if (!item.precos || !item.precos.length) return acc;
-    const melhor = item.precos.reduce((a, b) => a.preco < b.preco ? a : b);
-    return acc + melhor.preco;
-  }, 0);
+    const hist = JSON.parse(localStorage.getItem('historico_corridas') || '[]');
+    const total = hist.length;
+    const gasto = hist.reduce((acc, item) => {
+        if (!item.precos || !item.precos.length) return acc;
+        const melhor = item.precos.reduce((a, b) => a.preco < b.preco ? a : b);
+        return acc + melhor.preco;
+    }, 0);
 
-  document.querySelectorAll('.perfil-stats-row .stat-item .stat-num').forEach(el => {
-    const parent = el.closest('.stat-item');
-    if (!parent) return;
-    const label = parent.querySelector('.stat-label');
-    if (label && label.textContent.trim() === 'Corridas') {
-      el.textContent = total;
-    }
-  });
+    document.querySelectorAll('.perfil-stats-row .stat-item .stat-num').forEach(el => {
+        const parent = el.closest('.stat-item');
+        if (!parent) return;
+        const label = parent.querySelector('.stat-label');
+        if (label && label.textContent.trim() === 'Corridas') {
+            el.textContent = total;
+        }
+    });
 
-  const totalCorridas = document.getElementById('totalCorridas');
-  const totalGasto = document.getElementById('totalGasto');
-  if (totalCorridas) totalCorridas.textContent = total;
-  if (totalGasto) totalGasto.textContent = `R$ ${gasto.toFixed(0)}`;
+    const totalCorridas = document.getElementById('totalCorridas');
+    const totalGasto = document.getElementById('totalGasto');
+    if (totalCorridas) totalCorridas.textContent = total;
+    if (totalGasto) totalGasto.textContent = `R$ ${gasto.toFixed(0)}`;
 }
 
 document.querySelectorAll('.perfil-menu-item').forEach(item => {
-  item.addEventListener('click', function () {
-    const title = this.querySelector('.menu-title')?.textContent || '';
-    if (title === 'Sair') {
-      if (confirm('Tem certeza que deseja sair?')) {
-        alert('Sessão encerrada!');
-      }
-    } else if (title === 'Informações pessoais') {
-      alert('Abrindo informações pessoais...');
-    } else if (title === 'Segurança') {
-      alert('Abrindo configurações de segurança...');
-    } else if (title === 'Favoritos') {
-      switchTab('favoritos');
-    }
-  });
+    item.addEventListener('click', function () {
+        const title = this.querySelector('.menu-title')?.textContent || '';
+        if (title === 'Sair') {
+            if (confirm('Tem certeza que deseja sair?')) {
+                localStorage.removeItem('auth_token');
+                window.location.href = 'login.html';
+            }
+        } else if (title === 'Informações pessoais') {
+            alert('Abrindo informações pessoais...');
+        } else if (title === 'Segurança') {
+            alert('Abrindo configurações de segurança...');
+        } else if (title === 'Favoritos') {
+            switchTab('favoritos');
+        }
+    });
 });
 
 async function agendarSugestoes(tipo) {
-  clearTimeout(timeoutSug);
-  timeoutSug = setTimeout(() => carregarSugestoes(tipo), 400);
+    clearTimeout(timeoutSug);
+    timeoutSug = setTimeout(() => carregarSugestoes(tipo), 400);
 }
 
 async function carregarSugestoes(tipo) {
-  const input = tipo === 'origem' ? inputOrigem : inputDestino;
-  const divId = `sugestoes${tipo.charAt(0).toUpperCase()+tipo.slice(1)}`;
-  const sugDiv = document.getElementById(divId);
-  const termo = input.value.trim();
-  if (!sugDiv || termo.length < 2) { if (sugDiv) sugDiv.style.display = 'none'; return; }
-  try {
-    const lista = await buscarSugestoes(termo);
-    if (!lista.length) { sugDiv.style.display = 'none'; return; }
-    sugDiv.innerHTML = lista.map(s => `<div class="sugestao-item" data-lat="${s.lat}" data-lon="${s.lon}" data-nome="${s.nome.replace(/"/g,'&quot;')}">${s.nome}</div>`).join('');
-    sugDiv.style.display = 'block';
-    
-    // Remove event listeners antigos
-    const newSugDiv = sugDiv.cloneNode(true);
-    sugDiv.parentNode.replaceChild(newSugDiv, sugDiv);
-    
-    newSugDiv.querySelectorAll('.sugestao-item').forEach(el => {
-      el.addEventListener('click', () => {
-        const nome = el.dataset.nome;
-        const lat = parseFloat(el.dataset.lat);
-        const lon = parseFloat(el.dataset.lon);
+    const input = tipo === 'origem' ? inputOrigem : inputDestino;
+    const divId = `sugestoes${tipo.charAt(0).toUpperCase()+tipo.slice(1)}`;
+    const sugDiv = document.getElementById(divId);
+    const termo = input.value.trim();
+    if (!sugDiv || termo.length < 2) { if (sugDiv) sugDiv.style.display = 'none'; return; }
+    try {
+        const lista = await buscarSugestoes(termo);
+        if (!lista.length) { sugDiv.style.display = 'none'; return; }
+        sugDiv.innerHTML = lista.map(s => `<div class="sugestao-item" data-lat="${s.lat}" data-lon="${s.lon}" data-nome="${s.nome.replace(/"/g,'&quot;')}">${s.nome}</div>`).join('');
+        sugDiv.style.display = 'block';
         
-        input.value = nome;
-        newSugDiv.style.display = 'none';
+        const newSugDiv = sugDiv.cloneNode(true);
+        sugDiv.parentNode.replaceChild(newSugDiv, sugDiv);
         
-        // SALVA OS DADOS DIRETAMENTE
-        if (tipo === 'origem') {
-          localOrigem = { lat, lon, nome };
-        } else {
-          localDestino = { lat, lon, nome };
-        }
-        
-        // CHAMA A BUSCA - AGORA USANDO OS DADOS SALVOS
-        if (localOrigem && localDestino) {
-          buscarRota();
-        }
-      });
-    });
-  } catch { sugDiv.style.display = 'none'; }
+        newSugDiv.querySelectorAll('.sugestao-item').forEach(el => {
+            el.addEventListener('click', () => {
+                const nome = el.dataset.nome;
+                const lat = parseFloat(el.dataset.lat);
+                const lon = parseFloat(el.dataset.lon);
+                
+                input.value = nome;
+                newSugDiv.style.display = 'none';
+                
+                if (tipo === 'origem') {
+                    localOrigem = { lat, lon, nome };
+                } else {
+                    localDestino = { lat, lon, nome };
+                }
+                
+                if (localOrigem && localDestino) {
+                    buscarRota();
+                }
+            });
+        });
+    } catch { sugDiv.style.display = 'none'; }
 }
 
 window.abrirApp = function (providerName) {
-  if (!localOrigem || !localDestino) return;
-  const { lat: oLat, lon: oLon } = localOrigem;
-  const { lat: dLat, lon: dLon } = localDestino;
-  const links = {
-    Uber: `https://m.uber.com/ul/?action=setPickup&pickup[latitude]=${oLat}&pickup[longitude]=${oLon}&dropoff[latitude]=${dLat}&dropoff[longitude]=${dLon}`,
-    '99': 'https://99app.com',
-    inDriver: 'https://indriver.com',
-  };
-  window.open(links[providerName] || '#', '_blank');
+    if (!localOrigem || !localDestino) return;
+    const { lat: oLat, lon: oLon } = localOrigem;
+    const { lat: dLat, lon: dLon } = localDestino;
+    const links = {
+        Uber: `https://m.uber.com/ul/?action=setPickup&pickup[latitude]=${oLat}&pickup[longitude]=${oLon}&dropoff[latitude]=${dLat}&dropoff[longitude]=${dLon}`,
+        '99': 'https://99app.com',
+        inDriver: 'https://indriver.com',
+    };
+    window.open(links[providerName] || '#', '_blank');
 };
 
 function mostrarErro(msg) { 
-  erroDiv.textContent = msg; 
-  erroDiv.style.display = 'block'; 
-  setTimeout(() => erroDiv.style.display = 'none', 5000); 
+    erroDiv.textContent = msg; 
+    erroDiv.style.display = 'block'; 
+    setTimeout(() => erroDiv.style.display = 'none', 5000); 
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  renderizarHistorico();
-  renderizarFavoritos();
-  atualizarPerfil();
+btnFavoritar.addEventListener('click', async () => {
+    if (!localOrigem || !localDestino) {
+        mostrarNotificacao('Faça uma busca primeiro!', 'warning');
+        return;
+    }
+    
+    if (!ultimaComparacao) {
+        mostrarNotificacao('Faça uma busca primeiro!', 'warning');
+        return;
+    }
+    
+    await salvarRotaFavorita(
+        localOrigem, 
+        localDestino, 
+        ultimaComparacao.providers, 
+        ultimaComparacao.distanceKm
+    );
+});
+
+document.addEventListener('DOMContentLoaded', async () => {
+    await renderizarHistorico();
+    await renderizarRotasFavoritas();
+    atualizarPerfil();
+    await atualizarBotaoFavoritar();
 });
