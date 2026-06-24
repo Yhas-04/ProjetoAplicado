@@ -3,13 +3,15 @@ package com.projetoaplicado1.rideappsimulator.adapter.in.web.controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
 import java.util.Random;
 
 @RestController
-public class SimulatorController {
+public class Rota99 {
 
     private static final Random random = new Random();
+    private static final double BASE_PRICE = 22.00;
+    private static final double PRICE_PER_KM = 1.70;
+    private static final double AVERAGE_SPEED = 0.80;
 
     @GetMapping("/quote")
     public QuoteResponse getQuote(
@@ -19,15 +21,10 @@ public class SimulatorController {
             @RequestParam Double destLon) {
 
         double distance = calculateDistance(originLat, originLon, destLat, destLon);
-
-        // Simula preço base: 25.00 + (distância * 1.50)
-        double basePrice = 25.00 + (distance * 1.50);
-        // Aplica variação aleatória (distribuição normal)
-        double price = basePrice + (random.nextGaussian() * 1.50);
-        price = Math.max(price, 5.0);
-
-        // Simula tempo estimado: distância / 0.8 km/min
-        int time = (int) Math.round(distance / 0.8);
+        double basePrice = BASE_PRICE + (distance * PRICE_PER_KM);
+        double price = basePrice + (random.nextGaussian() * 1.80);
+        price = Math.max(price, 4.0);
+        int time = (int) Math.round(distance / AVERAGE_SPEED);
 
         return new QuoteResponse(price, "BRL", time);
     }

@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="79d96ad1-6e9b-4664-a302-59708b84fcde" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/../.idea/vcs.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../dkpop/.gitattributes" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../dkpop/.gitignore" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../dkpop/.mvn/wrapper/maven-wrapper.properties" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../dkpop/mvnw" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../dkpop/mvnw.cmd" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../dkpop/pom.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../dkpop/src/main/java/com/projetoaplicado1/rideappsimulator/RideAppSimulatorApplication.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../dkpop/src/main/resources/application.properties" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../dkpop/src/test/java/com/projetoaplicado1/rideappsimulator/RideAppSimulatorApplicationTests.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../ride-app-simulator/src/main/java/com/projetoaplicado1/rideappsimulator/adapter/in/web/controller/MobfyController.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../rota99/.gitattributes" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../rota99/.gitignore" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../rota99/.mvn/wrapper/maven-wrapper.properties" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../rota99/mvnw" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../rota99/mvnw.cmd" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../rota99/pom.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../rota99/src/main/resources/application.properties" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../videcar/.gitattributes" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../videcar/.gitignore" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../videcar/.mvn/wrapper/maven-wrapper.properties" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../videcar/mvnw" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../videcar/mvnw.cmd" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../videcar/pom.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../videcar/src/main/java/com/projetoaplicado1/rideappsimulator/RideAppSimulatorApplication.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../videcar/src/main/java/com/projetoaplicado1/rideappsimulator/adapter/in/web/controller/Videcar.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../videcar/src/main/resources/application.properties" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../videcar/src/test/java/com/projetoaplicado1/rideappsimulator/RideAppSimulatorApplicationTests.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../.idea/centralizador.iml" beforeDir="false" afterPath="$PROJECT_DIR$/../.idea/centralizador.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../centralizador/frontend/public/js/app.js" beforeDir="false" afterPath="$PROJECT_DIR$/../centralizador/frontend/public/js/app.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../centralizador/frontend/public/js/nominatim.js" beforeDir="false" afterPath="$PROJECT_DIR$/../centralizador/frontend/public/js/nominatim.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../centralizador/frontend/public/login.html" beforeDir="false" afterPath="$PROJECT_DIR$/../centralizador/frontend/public/login.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../centralizador/frontend/public/register.html" beforeDir="false" afterPath="$PROJECT_DIR$/../centralizador/frontend/public/register.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../centralizador/src/main/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/../centralizador/src/main/resources/application.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../ride-app-simulator/src/main/java/com/projetoaplicado1/rideappsimulator/adapter/in/web/controller/SimulatorController.java" beforeDir="false" afterPath="$PROJECT_DIR$/../dkpop/src/main/java/com/projetoaplicado1/rideappsimulator/adapter/in/web/controller/Dkpop.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../ride-app-simulator/src/main/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/../ride-app-simulator/src/main/resources/application.properties" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/../.." />
+  </component>
+  <component name="MavenImportPreferences">
+    <option name="generalSettings">
+      <MavenGeneralSettings>
+        <option name="mavenHomeTypeForPersistence" value="WRAPPER" />
+      </MavenGeneralSettings>
+    </option>
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 2,
+  &quot;fromUser&quot;: false
+}</component>
+  <component name="ProjectId" id="3FXUFjaaEcR5KrkLmkIRsMXLKyA" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "Spring Boot.RideAppSimulatorApplication.executor": "Run",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "git-widget-placeholder": "feature/auth",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "C:/Users/migue/OneDrive/Documentos/IFC/pa1/centralizador_pa/ProjetoAplicado/centralizador/videcar - Copia"
+  }
+}]]></component>
+  <component name="RunManager">
+    <configuration default="true" type="JetRunConfigurationType">
+      <module name="videcar" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration default="true" type="KotlinStandaloneScriptRunConfigurationType">
+      <module name="rota99" />
+      <option name="filePath" />
+      <method v="2" />
+    </configuration>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-jdk-30f59d01ecdd-37e91769500f-intellij.indexing.shared.core-IU-261.24374.151" />
+        <option value="bundled-js-predefined-d6986cc7102b-31caf2ab9e3c-JavaScript-IU-261.24374.151" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="79d96ad1-6e9b-4664-a302-59708b84fcde" name="Changes" comment="" />
+      <created>1782220806073</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1782220806073</updated>
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+</project>
